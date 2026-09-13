@@ -27,9 +27,11 @@ const App = () => {
   let previous = null
 
   if (match && match.params) {
-    const pokemonId = pokemonList.find(({ name }) => name === match.params.name).id
-    previous = pokemonList.find(({ id }) => id === pokemonId - 1)
-    next = pokemonList.find(({ id }) => id === pokemonId + 1)
+    const currentPokemon = pokemonList.find(({ name }) => name === match.params.name)
+    if (currentPokemon) {
+      previous = pokemonList.find(({ id }) => id === currentPokemon.id - 1)
+      next = pokemonList.find(({ id }) => id === currentPokemon.id + 1)
+    }
   }
 
   return (
