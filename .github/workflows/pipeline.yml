@@ -9,7 +9,7 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  simple_deployment_pipeline:
+  build_and_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,30 +35,6 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
 
-      - name: Trigger deployment on Render
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
-        run: curl ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-
-      - name: Notify Discord on Success
-        uses: sarisia/actions-status-discord@v1
-        if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
-          status: ${{ job.status }}
-          title: "Deployment Successful! 🚀"
-          description: "A new version of Pokedex was successfully deployed by ${{ github.actor }}."
-          color: 0x00ff00
-
-      - name: Notify Discord on Failure
-        uses: sarisia/actions-status-discord@v1
-        if: ${{ failure() }}
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
-          status: ${{ job.status }}
-          title: "Build Failed! 💥"
-          description: "Commit '${{ github.event.head_commit.message }}' by ${{ github.actor }} broke the build.\nCommit Link: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-          color: 0xff0000
-
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -66,14 +42,47 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
+  deploy:
+    needs: [build_and_test]
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger deployment on Render
+        run: curl ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
   tag_release:
-    needs: [simple_deployment_pipeline]
+    needs: [deploy]
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Bump version and push tag
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         uses: anothrNick/github-tag-action@1.75.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
+
+  notify_discord:
+    needs: [build_and_test, deploy, tag_release]
+    if: ${{ always() && github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord on Success
+        uses: sarisia/actions-status-discord@v1
+        if: ${{ needs.build_and_test.result == 'success' && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: "Success"
+          title: "Deployment Successful! 🚀"
+          description: "New version deployed to Render by ${{ github.actor }}."
+          color: 0x00ff00
+
+      - name: Notify Discord on Failure
+        uses: sarisia/actions-status-discord@v1
+        if: ${{ needs.build_and_test.result == 'failure' || needs.deploy.result == 'failure' }}
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: "Failure"
+          title: "Pipeline Failed! 💥"
+          description: "Commit '${{ github.event.head_commit.message }}' broke the build."
+          color: 0xff0000
