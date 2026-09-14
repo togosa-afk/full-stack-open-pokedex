@@ -7,7 +7,7 @@ module.exports = defineConfig({
   fullyParallel: true,
   workers: 1,
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:5001',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,7 +18,7 @@ module.exports = defineConfig({
   ],
   webServer: {
     command: 'npm run start',
-    url: 'http://localhost:8080',
+    url: 'http://localhost:5001',
     timeout: 120 * 1000,
     reuseExistingServer: !process.env.CI,
   },
