@@ -39,6 +39,26 @@ jobs:
         if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
+      - name: Notify Discord on Success
+        uses: sarisia/actions-status-discord@v1
+        if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "Deployment Successful! 🚀"
+          description: "A new version of Pokedex was successfully deployed by ${{ github.actor }}."
+          color: 0x00ff00
+
+      - name: Notify Discord on Failure
+        uses: sarisia/actions-status-discord@v1
+        if: ${{ failure() }}
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "Build Failed! 💥"
+          description: "Commit '${{ github.event.head_commit.message }}' by ${{ github.actor }} broke the build.\nCommit Link: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          color: 0xff0000
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
