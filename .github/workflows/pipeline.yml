@@ -37,6 +37,7 @@ jobs:
         run: npm run test:e2e
 
       - name: Trigger deployment on Render
+        if: ${{ github.event_name == 'push' }}
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
       - uses: actions/upload-artifact@v4
