@@ -13,3 +13,5 @@ Start by running `npm install` inside the project folder
 `npm run start-prod` to run your production build
 
 you can visit my app here "https://full-stack-open-pokedex-q2m4.onrender.com"
+
+you can see ex-21-22 here "https://github.com/togosa-afk/AppBlog"
